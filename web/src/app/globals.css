@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-ink-100;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+html.light body {
+  @apply bg-ink-50 text-ink-900;
+}
+
+*:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.kbd {
+  @apply inline-flex items-center justify-center rounded border border-ink-700
+    bg-ink-900 px-1.5 py-0.5 text-[10px] font-mono text-ink-300;
+}
+
+html.light .kbd {
+  @apply border-ink-300 bg-ink-100 text-ink-700;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded border
+    border-ink-700 bg-ink-900 px-3 py-1.5 text-sm text-ink-100
+    transition-colors hover:bg-ink-800 disabled:opacity-50;
+}
+.btn-primary {
+  @apply border-sky-700 bg-sky-700 text-white hover:bg-sky-600;
+}
+.btn-danger {
+  @apply border-rose-700 bg-rose-800 text-white hover:bg-rose-700;
+}
+
+html.light .btn {
+  @apply border-ink-300 bg-white text-ink-900 hover:bg-ink-100;
+}
+
+.tier-high {
+  @apply text-emerald-300;
+}
+.tier-medium {
+  @apply text-amber-300;
+}
+.tier-low {
+  @apply text-ink-400;
+}
+
+.input,
+.textarea {
+  @apply w-full rounded border border-ink-700 bg-ink-900 px-2 py-1 text-sm
+    text-ink-100 outline-none focus:border-sky-600;
+}
+html.light .input,
+html.light .textarea {
+  @apply border-ink-300 bg-white text-ink-900;
+}
+
+.label {
+  @apply text-xs uppercase tracking-wider text-ink-400;
+}

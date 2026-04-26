@@ -1,0 +1,477 @@
+// BD updates database schema.
+// All operational rows carry a workspaceId for future multi-tenancy.
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../lib/src/generated/prisma"
+  previewFeatures = []
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Direct (non-pooled) connection used for migrations against Neon's
+  // pgbouncer. DATABASE_URL is the pooled URL.
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- enums ----------
+
+enum EventType {
+  CMA_INVITATION_TO_COMMENT
+  CMA_PHASE1_DECISION
+  CMA_PHASE2_REFERENCE
+  CMA_PHASE2_INTERIM_REPORT
+  CMA_REMEDIES_CONSULTATION
+  CMA_PHASE2_FINAL_DECISION
+  CMA_UNDERTAKINGS_UPDATE
+  EC_MERGER_NOTIFIED
+  EC_PHASE1_PRESS_RELEASE
+  EC_PHASE1_DECISION_PUBLISHED
+  EC_PHASE2_OPENING
+  EC_PHASE2_PRESS_RELEASE
+  EC_PHASE2_DECISION_PUBLISHED
+  EC_COMMITMENTS_PUBLISHED
+  CONSUMER_ENFORCEMENT_ACTION
+  CONSUMER_GUIDANCE
+  CONSUMER_SWEEP
+  MARKET_INVESTIGATION
+  DMCC_DESIGNATION
+  DMCC_CONDUCT_REQUIREMENT
+  ANTITRUST_ENFORCEMENT
+  JUDGMENT
+  CONSULTATION
+  OTHER
+}
+
+enum Authority {
+  CMA
+  EC
+  OTHER
+}
+
+enum RelevanceTier {
+  high
+  medium
+  low
+}
+
+enum DraftStatus {
+  pending
+  sent
+  dismissed
+}
+
+enum EntityKind {
+  competitor
+  customer
+  supplier
+  portfolio_company
+  watched_theme
+  watched_phrase
+}
+
+enum ProcessingStatus {
+  pending
+  processing
+  done
+  failed
+}
+
+enum OwnershipMode {
+  /// I am the relationship lead — drafts addressed directly to the client.
+  mine
+  /// Someone else (e.g. a Cleary partner) owns the relationship — drafts
+  /// addressed to that partner with a nested suggested email for the client.
+  relationship_partner
+}
+
+// ---------- auth ----------
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  notifications Notification[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- clients & roster ----------
+
+model Client {
+  id                       String        @id @default(cuid())
+  workspaceId              String        @default("default-workspace")
+  name                     String
+  displayName              String
+  sectorTags               String[]      @default([])
+  geographies              String[]      @default([])
+  confidenceThreshold      Int           @default(70)
+  tonePreference           String?
+  archived                 Boolean       @default(false)
+  notes                    String?       @db.Text
+  /// Routing for generated drafts. See OwnershipMode.
+  ownershipMode            OwnershipMode @default(mine)
+  /// When ownershipMode = relationship_partner, the partner who owns the
+  /// client relationship — the draft is addressed to them with a nested
+  /// suggested email for the client.
+  relationshipPartnerName  String?
+  relationshipPartnerEmail String?
+  relationshipPartnerFirm  String?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  profile      ClientProfile?
+  contacts     ClientContact[]
+  entities     ClientEntity[]
+  interactions ClientAuthorityInteraction[]
+  rules        ClientRelevanceRule[]
+  judgments    RelevanceJudgment[]
+  drafts       Draft[]
+
+  @@index([workspaceId, archived])
+  @@index([workspaceId, name])
+}
+
+model ClientProfile {
+  id                String   @id @default(cuid())
+  clientId          String   @unique
+  narrativeMarkdown String   @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientContact {
+  id        String   @id @default(cuid())
+  clientId  String
+  name      String
+  email     String
+  role      String?
+  isPrimary Boolean  @default(false)
+  isCc      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model ClientEntity {
+  id        String     @id @default(cuid())
+  clientId  String
+  kind      EntityKind
+  value     String
+  notes     String?    @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([clientId, kind])
+}
+
+model ClientAuthorityInteraction {
+  id              String   @id @default(cuid())
+  clientId        String
+  authority       String
+  caseRef         String?
+  year            Int?
+  summary         String   @db.Text
+  surfaceInPrompt Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model ClientRelevanceRule {
+  id                    String   @id @default(cuid())
+  workspaceId           String   @default("default-workspace")
+  clientId              String?
+  scope                 String // "client" | "global"
+  rule                  String   @db.Text
+  /// Whether the rule is currently consulted by the relevance engine.
+  active                Boolean  @default(true)
+  /// "active" | "candidate" | "rejected".
+  /// Only "active" rules are passed to the relevance prompt.
+  /// Assistant-proposed rules land as "candidate" and require explicit
+  /// promotion on /rules.
+  status                String   @default("active")
+  /// When the user proposed/created this rule. Useful for sorting.
+  proposedAt            DateTime @default(now())
+  /// Where the rule came from. "user" | "assistant" | "bulk_dismiss".
+  source                String   @default("user")
+  createdFromFeedbackId String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  client                Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([workspaceId, scope, active])
+  @@index([workspaceId, status])
+}
+
+// ---------- events ----------
+
+model SourceItem {
+  id              String   @id @default(cuid())
+  sourceId        String
+  /// Stable id within the source feed (e.g. CMA case slug, EC ip_26_852).
+  externalId      String
+  url             String
+  rawTitle        String
+  rawPublishedAt  DateTime
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  /// Hash of the raw payload as last seen. Updates when content changes.
+  lastContentHash String
+  rawPayload      Json
+  events          Event[]
+
+  @@unique([sourceId, externalId])
+  @@index([sourceId, lastSeenAt])
+}
+
+model Event {
+  id               String           @id @default(cuid())
+  workspaceId      String           @default("default-workspace")
+  authority        Authority
+  sourceUrl        String
+  caseRef          String?
+  eventType        EventType
+  title            String
+  summary          String           @db.Text
+  fullText         String           @db.Text
+  parties          String[]         @default([])
+  sectors          String[]         @default([])
+  geographies      String[]         @default([])
+  publishedAt      DateTime
+  detectedAt       DateTime         @default(now())
+  /// SHA-256 of the normalised payload. Indexed but NOT globally unique;
+  /// the same hash can appear across separate (authority, caseRef, eventType,
+  /// publishedAt) tuples in rare cases. See sourceItems for raw dedupe.
+  contentHash      String
+  attachmentUrls   String[]         @default([])
+  processingStatus ProcessingStatus @default(pending)
+  processingError  String?          @db.Text
+  processedAt      DateTime?
+
+  /// Optional pointer to the raw source row this event was derived from.
+  sourceItemId String?
+  sourceItem   SourceItem? @relation(fields: [sourceItemId], references: [id])
+
+  judgments RelevanceJudgment[]
+  drafts    Draft[]
+
+  @@unique([authority, caseRef, eventType, publishedAt])
+  @@index([contentHash])
+  @@index([workspaceId, detectedAt])
+  @@index([workspaceId, publishedAt])
+  @@index([authority, eventType])
+  @@index([processingStatus])
+}
+
+model OutboxJob {
+  id            String   @id @default(cuid())
+  workspaceId   String   @default("default-workspace")
+  /// e.g. "process-event", "generate-draft", "send-notification".
+  type          String
+  payload       Json
+  /// "pending" | "processing" | "done" | "failed"
+  status        String   @default("pending")
+  runAfter      DateTime @default(now())
+  lockedAt      DateTime?
+  lockedBy      String?
+  attempts      Int      @default(0)
+  maxAttempts   Int      @default(5)
+  lastError     String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, runAfter])
+  @@index([workspaceId, status])
+}
+
+// ---------- relevance & drafts ----------
+
+model RelevanceJudgment {
+  id             String        @id @default(cuid())
+  workspaceId    String        @default("default-workspace")
+  eventId        String
+  clientId       String
+  confidence     Int
+  tier           RelevanceTier
+  rationale      String        @db.Text
+  angle          String        @db.Text
+  sourceExcerpts String[]      @default([])
+  promptVersion  String
+  modelId        String
+  processedAt    DateTime      @default(now())
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  draft  Draft?
+
+  @@unique([eventId, clientId])
+  @@index([clientId, tier])
+  @@index([eventId])
+}
+
+model Draft {
+  id                  String      @id @default(cuid())
+  workspaceId         String      @default("default-workspace")
+  eventId             String
+  clientId            String
+  relevanceJudgmentId String      @unique
+  status              DraftStatus @default(pending)
+  subject             String
+  body                String      @db.Text
+  /// Internal-only narrative the drafter generates explaining client
+  /// selection. Surfaced above the email in the inbox UI; never copied
+  /// to clipboard, never sent to client/partner.
+  whyThisClient       String      @default("") @db.Text
+  recipientEmails     String[]    @default([])
+  ccEmails            String[]    @default([])
+  sourceClaims        Json
+  promptVersion       String
+  modelId             String
+  notifiedAt          DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  event     Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  judgment  RelevanceJudgment @relation(fields: [relevanceJudgmentId], references: [id], onDelete: Cascade)
+  versions  DraftVersion[]
+  send      Send?
+  dismissal Dismissal?
+
+  @@index([workspaceId, status, createdAt])
+  @@index([clientId, status])
+  @@index([status, createdAt])
+}
+
+model DraftVersion {
+  id        String   @id @default(cuid())
+  draftId   String
+  body      String   @db.Text
+  subject   String
+  editedAt  DateTime @default(now())
+  editedBy  String // "model" | "user"
+  draft     Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId, editedAt])
+}
+
+model Send {
+  id              String   @id @default(cuid())
+  draftId         String   @unique
+  sentAt          DateTime @default(now())
+  finalSubject    String
+  finalBody       String   @db.Text
+  finalRecipients String[] @default([])
+  finalCc         String[] @default([])
+  draft           Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+}
+
+model Dismissal {
+  id                  String   @id @default(cuid())
+  draftId             String   @unique
+  categories          String[] @default([])
+  freeText            String?  @db.Text
+  scopeClientSpecific Boolean  @default(false)
+  scopeCrossClient    Boolean  @default(false)
+  dismissedAt         DateTime @default(now())
+  draft               Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+}
+
+model Feedback {
+  id                  String   @id @default(cuid())
+  workspaceId         String   @default("default-workspace")
+  draftId             String
+  clientId            String
+  kind                String // "dismissal" | "edit" | "send-as-is"
+  categories          String[] @default([])
+  freeText            String?  @db.Text
+  scopeClientSpecific Boolean  @default(false)
+  scopeCrossClient    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  @@index([clientId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+// ---------- notifications & source health ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  draftId   String?
+  channel   String // "email"
+  subject   String
+  bodyText  String   @db.Text
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
+}
+
+model SourceHealth {
+  id                 String    @id @default(cuid())
+  sourceId           String    @unique
+  label              String
+  lastSuccessAt      DateTime?
+  lastFailureAt      DateTime?
+  consecutiveFailures Int      @default(0)
+  lastError          String?   @db.Text
+  lastNote           String?   @db.Text
+  updatedAt          DateTime  @updatedAt
+}
+
+// ---------- settings (single row, simple) ----------
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}

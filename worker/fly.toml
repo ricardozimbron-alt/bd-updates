@@ -1,0 +1,32 @@
+# fly.toml — BD updates worker
+# Deploy with:
+#   cd worker && fly launch --no-deploy --copy-config --name <your-app>
+#   fly secrets set DATABASE_URL=… ANTHROPIC_API_KEY=… RESEND_API_KEY=… \
+#                   RESEND_FROM=… OWNER_EMAIL=… AUTH_SECRET=… NEXTAUTH_URL=…
+#   fly deploy
+
+app = "bd-updates-worker"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+  ignorefile = "../.dockerignore"
+
+[env]
+  NODE_ENV = "production"
+  WORKER_HEALTH_PORT = "8080"
+  WORKSPACE_ID = "default-workspace"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
+
+[[restart]]
+  policy = "always"

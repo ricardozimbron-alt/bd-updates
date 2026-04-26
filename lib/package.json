@@ -1,0 +1,37 @@
+{
+  "name": "@bdu/lib",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model": "./src/model.ts",
+    "./prompts": "./src/prompts.ts",
+    "./prisma": "./src/prisma.ts",
+    "./relevance": "./src/relevance.ts",
+    "./drafter": "./src/drafter.ts",
+    "./classify": "./src/classify.ts",
+    "./hash": "./src/hash.ts",
+    "./types": "./src/types.ts",
+    "./source": "./src/source.ts",
+    "./logger": "./src/logger.ts",
+    "./notify": "./src/notify.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@prisma/client": "^6.1.0",
+    "resend": "^4.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "framework": "nextjs",
-  "buildCommand": "pnpm install --frozen-lockfile=false && prisma generate --schema prisma/schema.prisma && pnpm --filter @bdu/web build",
   "installCommand": "pnpm install --frozen-lockfile=false",
-  "outputDirectory": "web/.next"
+  "buildCommand": "pnpm --filter @bdu/web build"
 }

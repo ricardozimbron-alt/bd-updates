@@ -5,6 +5,10 @@ generator client {
   provider        = "prisma-client-js"
   output          = "../lib/src/generated/prisma"
   previewFeatures = []
+  // Native for local dev (macOS arm64), debian-openssl-3.0.x for the
+  // worker's Bookworm image on Fly. Both must be present in the generated
+  // client because the Dockerfile reuses the install-time generation.
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

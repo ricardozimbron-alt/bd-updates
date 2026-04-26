@@ -1,31 +1,30 @@
-# fly.toml — BD updates worker
-# The Dockerfile lives at the repo root because it COPYs files from
-# ../prisma, ../lib, ../worker. Build context must be the repo root.
-# Deploy from the repo root with:
-#   flyctl deploy --config worker/fly.toml --remote-only
+# fly.toml app configuration file generated for bd-updates-worker on 2026-04-26T19:00:13+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "bd-updates-worker"
-primary_region = "lhr"
+app = 'bd-updates-worker'
+primary_region = 'lhr'
 
 [build]
-  dockerfile = "../Dockerfile"
-  ignorefile = "../.dockerignore"
+  dockerfile = '../Dockerfile'
+  ignorefile = '../.dockerignore'
 
 [env]
-  NODE_ENV = "production"
-  WORKER_HEALTH_PORT = "8080"
-  WORKSPACE_ID = "default-workspace"
+  NODE_ENV = 'production'
+  WORKER_HEALTH_PORT = '8080'
+  WORKSPACE_ID = 'default-workspace'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
 
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "1024mb"
-
 [[restart]]
-  policy = "always"
+  policy = 'always'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '1024mb'

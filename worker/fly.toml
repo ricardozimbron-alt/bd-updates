@@ -1,15 +1,14 @@
 # fly.toml — BD updates worker
-# Deploy with:
-#   cd worker && fly launch --no-deploy --copy-config --name <your-app>
-#   fly secrets set DATABASE_URL=… ANTHROPIC_API_KEY=… RESEND_API_KEY=… \
-#                   RESEND_FROM=… OWNER_EMAIL=… AUTH_SECRET=… NEXTAUTH_URL=…
-#   fly deploy
+# The Dockerfile lives at the repo root because it COPYs files from
+# ../prisma, ../lib, ../worker. Build context must be the repo root.
+# Deploy from the repo root with:
+#   flyctl deploy --config worker/fly.toml --remote-only
 
 app = "bd-updates-worker"
 primary_region = "lhr"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "../Dockerfile"
   ignorefile = "../.dockerignore"
 
 [env]

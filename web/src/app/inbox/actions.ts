@@ -37,14 +37,16 @@ export async function markSentAction(formData: FormData) {
   const draft = await prisma.draft.findUniqueOrThrow({ where: { id } });
   await prisma.$transaction([
     prisma.draft.update({ where: { id }, data: { status: 'sent' } }),
-    prisma.send.create({
-      data: {
+    prisma.send.upsert({
+      where: { draftId: id },
+      create: {
         draftId: id,
         finalSubject: draft.subject,
         finalBody: draft.body,
         finalRecipients: draft.recipientEmails,
         finalCc: draft.ccEmails,
       },
+      update: {},
     }),
     prisma.feedback.create({
       data: {
@@ -102,14 +104,16 @@ export async function bulkDismissAction(formData: FormData) {
   for (const d of drafts) {
     await prisma.$transaction([
       prisma.draft.update({ where: { id: d.id }, data: { status: 'dismissed' } }),
-      prisma.dismissal.create({
-        data: {
+      prisma.dismissal.upsert({
+        where: { draftId: d.id },
+        create: {
           draftId: d.id,
           categories: ['Bulk-dismissed'],
           freeText: reason || null,
           scopeClientSpecific: ruleScope === 'client',
           scopeCrossClient: ruleScope === 'global',
         },
+        update: {},
       }),
       prisma.feedback.create({
         data: {
@@ -133,8 +137,8 @@ export async function bulkDismissAction(formData: FormData) {
         scope: ruleScope,
         clientId,
         rule: ruleText,
-        active: true,
-        status: 'active',
+        active: false,
+        status: 'candidate',
         source: 'bulk_dismiss',
       },
     });
@@ -156,14 +160,16 @@ export async function dismissAction(formData: FormData) {
   const draft = await prisma.draft.findUniqueOrThrow({ where: { id: data.id } });
   await prisma.$transaction([
     prisma.draft.update({ where: { id: data.id }, data: { status: 'dismissed' } }),
-    prisma.dismissal.create({
-      data: {
+    prisma.dismissal.upsert({
+      where: { draftId: data.id },
+      create: {
         draftId: data.id,
         categories: data.categories,
         freeText: data.freeText || null,
         scopeClientSpecific: data.scopeClientSpecific,
         scopeCrossClient: data.scopeCrossClient,
       },
+      update: {},
     }),
     prisma.feedback.create({
       data: {

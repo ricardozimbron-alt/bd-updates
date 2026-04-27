@@ -82,14 +82,16 @@ export async function applyAssistantProposalAction(
       const draft = await prisma.draft.findUniqueOrThrow({ where: { id } });
       await prisma.$transaction([
         prisma.draft.update({ where: { id }, data: { status: 'dismissed' } }),
-        prisma.dismissal.create({
-          data: {
+        prisma.dismissal.upsert({
+          where: { draftId: id },
+          create: {
             draftId: id,
             categories: (p.categories as string[] | undefined) ?? [],
             freeText: (p.freeText as string | undefined) ?? null,
             scopeClientSpecific: Boolean(p.scopeClientSpecific),
             scopeCrossClient: Boolean(p.scopeCrossClient),
           },
+          update: {},
         }),
         prisma.feedback.create({
           data: {
@@ -111,14 +113,16 @@ export async function applyAssistantProposalAction(
       const draft = await prisma.draft.findUniqueOrThrow({ where: { id } });
       await prisma.$transaction([
         prisma.draft.update({ where: { id }, data: { status: 'sent' } }),
-        prisma.send.create({
-          data: {
+        prisma.send.upsert({
+          where: { draftId: id },
+          create: {
             draftId: id,
             finalSubject: draft.subject,
             finalBody: draft.body,
             finalRecipients: draft.recipientEmails,
             finalCc: draft.ccEmails,
           },
+          update: {},
         }),
       ]);
       revalidatePath('/inbox');

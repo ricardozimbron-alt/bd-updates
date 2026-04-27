@@ -253,27 +253,20 @@ The taxonomy defines 24 event types. Coverage by adapter:
 
 ## Known limitations
 
-1. **EC merger case search adapter is a placeholder.** The
-   competition-cases.ec.europa.eu site is an Angular SPA without a
-   discoverable public API. DG COMP issues a press release for almost every
-   Phase 1 clearance, Phase 2 opening and remedies decision, so the
-   ec-press adapter already produces those event types. Prior notifications
-   of concentrations (`EC_MERGER_NOTIFIED`) appear in the EU Official
-   Journal C-series and are not yet captured.
-2. **EC press release bodies are not fetched.** The press corner detail page
+1. **EC press release bodies are not fetched.** The press corner detail page
    is JS-rendered. The adapter takes the title and meta description (both
    server-rendered for SEO); the source URL is shown for the user to read
    the full release. Adding a headless-browser-based fetch is the obvious
    next step here.
-3. **CMA case-page hourly poller (DG COMP daily reconciliation).** Not yet
+2. **CMA case-page hourly poller (DG COMP daily reconciliation).** Not yet
    built. Spec lists this as a step-9 improvement.
-4. **Embeddings-based exemplar retrieval is wired but exemplars default to
+3. **Embeddings-based exemplar retrieval is wired but exemplars default to
    an empty array.** Add a job that, on each `Send`, computes an embedding
    and stores it; the drafter then retrieves nearest-neighbour past sends
    for that client. The drafter API already accepts `exemplars`.
-5. **Automated rule synthesis (Phase 2 of the spec) is not built.** Manual
+4. **Automated rule synthesis (Phase 2 of the spec) is not built.** Manual
    rule entry in `/rules` only.
-6. **Matter-chain dedupe (Phase 2) is not built.** Basic content-hash
+5. **Matter-chain dedupe (Phase 2) is not built.** Basic content-hash
    dedupe only.
 
 ## Next things to build (priority order)
@@ -281,8 +274,6 @@ The taxonomy defines 24 event types. Coverage by adapter:
 1. **Cloud deployment.** Pasting Neon + Resend keys is the only blocker;
    `vercel.json` and `worker/fly.toml` are ready. Run `vercel link`,
    `fly launch --copy-config --no-deploy`, set secrets, deploy.
-2. **EUR-Lex OJ C-series scraper for prior merger notifications.** Daily
-   feed at `eur-lex.europa.eu`. This catches `EC_MERGER_NOTIFIED` events.
 2. **Headless body fetch for EC press releases.** Use `playwright` in the
    worker or a small fly-side scraper. Surfaces the full press release in
    the inbox source pane.

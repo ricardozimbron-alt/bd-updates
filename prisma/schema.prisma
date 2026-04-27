@@ -6,9 +6,11 @@ generator client {
   output          = "../lib/src/generated/prisma"
   previewFeatures = []
   // Native for local dev (macOS arm64), debian-openssl-3.0.x for the
-  // worker's Bookworm image on Fly. Both must be present in the generated
-  // client because the Dockerfile reuses the install-time generation.
-  binaryTargets   = ["native", "debian-openssl-3.0.x"]
+  // worker's Bookworm image on Fly, rhel-openssl-3.0.x for Vercel's
+  // serverless runtime (Amazon Linux 2023). All three must be present
+  // in the generated client because each environment imports the same
+  // generated bundle.
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

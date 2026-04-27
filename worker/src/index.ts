@@ -144,11 +144,13 @@ function startHealth(model: ModelProvider) {
           res.end(JSON.stringify({ ok: true, t: new Date().toISOString() }));
           return;
         }
-        // Admin endpoints — require shared secret header.
-        if (
-          adminToken &&
-          req.headers['x-admin-token'] !== adminToken
-        ) {
+        const isAdmin = url.pathname.startsWith('/admin/');
+        if (isAdmin && !adminToken) {
+          res.statusCode = 503;
+          res.end('admin token not configured');
+          return;
+        }
+        if (isAdmin && req.headers['x-admin-token'] !== adminToken) {
           res.statusCode = 401;
           res.end('unauthorized');
           return;

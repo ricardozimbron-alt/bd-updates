@@ -32,10 +32,14 @@ export async function processEvent(
   const dbEvent = await prisma.event.findUnique({ where: { id: eventId } });
   if (!dbEvent) throw new Error(`event not found: ${eventId}`);
 
-  await prisma.event.update({
-    where: { id: eventId },
-    data: { processingStatus: 'processing' },
+  const claimed = await prisma.event.updateMany({
+    where: { id: eventId, processingStatus: 'pending' },
+    data: { processingStatus: 'processing', processingError: null },
   });
+  if (claimed.count === 0) {
+    log.info('skip: event is not pending', { eventId, status: dbEvent.processingStatus });
+    return { highTierDraftIds: [], mediumTierDraftIds: [] };
+  }
 
   const event: NormalisedEvent = {
     authority: dbEvent.authority,

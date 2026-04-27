@@ -13,10 +13,12 @@ export async function callWorkerAdmin(
   if (!ADMIN_URL) {
     return { ok: false, status: 0, body: 'WORKER_ADMIN_URL not set' };
   }
+  if (!ADMIN_TOKEN) {
+    return { ok: false, status: 0, body: 'WORKER_ADMIN_TOKEN not set' };
+  }
   const u = new URL(path, ADMIN_URL);
   for (const [k, v] of Object.entries(searchParams)) u.searchParams.set(k, v);
-  const headers: Record<string, string> = {};
-  if (ADMIN_TOKEN) headers['x-admin-token'] = ADMIN_TOKEN;
+  const headers: Record<string, string> = { 'x-admin-token': ADMIN_TOKEN };
   const res = await fetch(u.toString(), { method: 'POST', headers });
   return { ok: res.ok, status: res.status, body: await res.text() };
 }
